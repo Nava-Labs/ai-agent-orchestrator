@@ -159,12 +159,14 @@ async function sendToAgent(agent, message) {
     });
     return {
       agent: agent.name,
+      tag: agent.tag,
       success: true,
       response: response.data,
     };
   } catch (error) {
     return {
       agent: agent.name,
+      tag: agent.tag,
       success: false,
       error: error.message,
     };
@@ -385,7 +387,8 @@ program
       console.log("Count", count);
 
       results.forEach((result) => {
-        console.log(`\n${chalk.yellow(result.agent)}:`);
+        console.log(`\n${chalk.yellow(result.agent)} (${result.tag})`);
+
         if (result.success) {
           console.log(chalk.green("Response:"), result.response);
         } else {
