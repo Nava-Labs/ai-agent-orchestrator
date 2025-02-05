@@ -1,4 +1,7 @@
 {
   "name": "Andy2",
-  "endpoint": "http://localhost:3000/ab5a000e-88b5-09d0-ba25-75f5c6263eb9/message"
+  "endpoint": "http://localhost:3000/ab5a000e-88b5-09d0-ba25-75f5c6263eb9/message",
+  "walletId": "a8e8tmrw0ho7534la8dd9s3r",
+  "walletAddress": "0x33DB6942DFd8ec168Dac0b51554Df9366a1b961b",
+  "chainType": "ethereum"
 }
