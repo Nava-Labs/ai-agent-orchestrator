@@ -212,6 +212,7 @@ program
 
     const result = await loadAgents();
     if (!result.success) {
+      spinner.stop();
       console.log(chalk.yellow(`\n${result.message}`));
       return;
     }
