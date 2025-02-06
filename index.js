@@ -237,7 +237,9 @@ async function executeTrade(agents, token) {
     },
   });
 
-  console.log(`tx hash `, data.hash);
+  // console.log(`tx hash `, data.hash);
+  //
+  return data.hash;
 }
 
 program
@@ -350,7 +352,6 @@ program
     }
   });
 
-// main function
 program
   .command("chat")
   .description("Start a chat with all AI agents")
@@ -362,6 +363,7 @@ program
         console.log(chalk.yellow(`\n${result.message}`));
         return;
       }
+
       const message =
         options.direct ||
         (
@@ -376,38 +378,53 @@ program
           ])
         ).message;
 
-      const spinner = ora("Sending message to all agents...").start();
-      const results = await Promise.all(
-        result.agents.map((agent) => sendToAgent(agent, message)),
-      );
+      const results = [];
 
-      spinner.succeed("All agents responded");
+      // Process agents sequentially
+      for (const agent of result.agents) {
+        const spinner = ora(
+          `Sending message to ${agent.name} as ${agent.tag}...`,
+        ).start();
+        const response = await sendToAgent(agent, message);
+        results.push(response);
+        spinner.succeed(`${agent.name} responded`);
+
+        // // Display the response immediately
+        // console.log(`\n${chalk.yellow(response.agent)} (${response.tag})`);
+        // if (response.success) {
+        //   console.log(chalk.green("Response:"), response.response);
+        // } else {
+        //   console.log(chalk.red("Error:"), response.error);
+        // }
+      }
 
       let count = decidor(results.map((x) => x.response));
-      console.log("Count", count);
-
-      results.forEach((result) => {
-        console.log(`\n${chalk.yellow(result.agent)} (${result.tag})`);
-
-        if (result.success) {
-          console.log(chalk.green("Response:"), result.response);
-        } else {
-          console.log(chalk.red("Error:"), result.error);
-        }
-      });
+      // console.log("Count", count);
 
       if (count.yes == 2) {
-        const spinner2 = ora("\nExecuting on-chain txs... ").start();
-        await executeTrade(
+        // console.log(`\n${chalk.yellow("Shifu")} (Trader Agent)`);
+        // const spinner2 = ora("\nExecuting on-chain txs... ").start();
+        const spinner2 = ora(
+          "Sending message to Shifu Trader Agent... Executing onchain tx",
+        ).start();
+
+        await sleep(3000);
+
+        let hash = await executeTrade(
           result.agents,
           "0x9F46FC7156D2d5152A6706cDB31E74534d9491d6",
         );
-        spinner2.succeed("Executed");
+
+        spinner2.succeed(`Shifu responded, ${hash}`);
       }
     } catch (error) {
       console.error(chalk.red("Error:"), error.message);
       process.exit(1);
     }
   });
+
+const sleep = async (ms) => {
+  return new Promise((r) => setTimeout(r, ms));
+};
 
 program.parse();
