@@ -61,49 +61,11 @@ async function loadAgents() {
     // Load, parse, and process agent files
     const agents = await Promise.all(
       jsonFiles.map(async (file) => {
-        try {
-          const filePath = path.join(agentsDir, file);
-          const content = await fs.readFile(filePath, "utf-8");
-          const agent = JSON.parse(content);
+        const filePath = path.join(agentsDir, file);
+        const content = await fs.readFile(filePath, "utf-8");
+        const agent = JSON.parse(content);
 
-          // Check if walletId is missing
-          if (!agent.walletId) {
-            // Create Privy wallet
-            const privy = new PrivyClient(
-              process.env.PRIVY_APP_ID,
-              process.env.PRIVY_APP_SECRET,
-            );
-
-            const { id, address, chainType } = await privy.walletApi.create({
-              chainType: "ethereum",
-            });
-
-            // Update agent with new wallet info
-            agent.walletId = id;
-            agent.walletAddress = address;
-            agent.chainType = chainType;
-
-            // Write updated agent file
-            await fs.writeFile(
-              filePath,
-              JSON.stringify(agent, null, 2),
-              "utf-8",
-            );
-
-            console.log(
-              chalk.green(`Created Privy wallet for agent in ${file}`),
-            );
-          }
-
-          return agent;
-        } catch (err) {
-          console.log(
-            chalk.yellow(
-              `Warning: Failed to load agent from ${file}: ${err.message}`,
-            ),
-          );
-          return null;
-        }
+        return agent;
       }),
     );
 
@@ -285,10 +247,9 @@ program
     // Print agents with their balances
     agentsWithBalances.forEach((agent) => {
       console.log(chalk.yellow(`\n${agent.name}:`));
-      console.log(`Endpoint: ${agent.endpoint}`);
-      console.log(`Privy Wallet ID: ${agent.walletId}`);
-      console.log(`Privy Wallet Address: ${agent.walletAddress}`);
+      console.log(`Wallet Address: ${agent.walletAddress}`);
       console.log(chalk.blue(`Balance: ${agent.balance} ETH`));
+      console.log(`Endpoint: ${agent.endpoint}`);
     });
   });
 
