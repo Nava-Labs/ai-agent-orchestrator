@@ -34,7 +34,7 @@ const client = createPublicClient({
 
 const privy = new PrivyClient(
   process.env.PRIVY_APP_ID,
-  process.env.PRIVY_APP_SECRET
+  process.env.PRIVY_APP_SECRET,
 );
 
 // Configure the CLI
@@ -67,7 +67,7 @@ async function loadAgents() {
         const agent = JSON.parse(content);
 
         return agent;
-      })
+      }),
     );
 
     // Filter out any null values from failed loads
@@ -140,7 +140,7 @@ async function getSwapInputData(
   executorAddress,
   agentsAddresses,
   token,
-  chainId
+  chainId,
 ) {
   const swapMetadata = await swap({
     srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -190,19 +190,19 @@ async function getSwapInputData(
 async function executeTrade(agents, token, chainId) {
   const agentWallets = agents.map((x) => x.walletAddress);
 
-  // const walletPath = path.join(__dirname, "wallet.json");
-  // const walletContent = await fs.readFile(walletPath, "utf-8");
-  // const executorWallet = JSON.parse(walletContent);
+  const walletPath = path.join(__dirname, "wallet.json");
+  const walletContent = await fs.readFile(walletPath, "utf-8");
+  const executorWallet = JSON.parse(walletContent);
 
   const swapData = await getSwapInputData(
     "0x49F71E5c973E80849805736f7647A05c16CAE215",
     agentWallets,
     "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a",
-    42161
+    42161,
   );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
-    walletId: "0x49F71E5c973E80849805736f7647A05c16CAE215",
+    walletId: executorWallet.walletId,
     caip2: `eip155:42161`,
     transaction: {
       to: "0x8743E1ad7889d413C17901144d8CA91679977a67", //router
@@ -240,8 +240,8 @@ program
         } catch (error) {
           console.log(
             chalk.red(
-              `Error fetching balance for ${agent.name}: ${error.message}`
-            )
+              `Error fetching balance for ${agent.name}: ${error.message}`,
+            ),
           );
         }
 
@@ -249,7 +249,7 @@ program
           ...agent,
           balance,
         };
-      })
+      }),
     );
 
     spinner.stop();
@@ -311,7 +311,7 @@ program
       await fs.writeFile(
         walletPath,
         JSON.stringify(walletData, null, 2),
-        "utf-8"
+        "utf-8",
       );
 
       spinner.succeed("Executor wallet created successfully");
@@ -341,14 +341,14 @@ program
       const alphaAgent = result.agents.find((agent) => agent.name === "Alpha");
       if (!alphaAgent) {
         console.log(
-          chalk.yellow("\nAlpha agent not found in the available agents")
+          chalk.yellow("\nAlpha agent not found in the available agents"),
         );
         return;
       }
 
       // Get remaining agents excluding Alpha
       const remainingAgents = result.agents.filter(
-        (agent) => agent.name !== "Alpha"
+        (agent) => agent.name !== "Alpha",
       );
 
       const message =
@@ -367,12 +367,12 @@ program
 
       console.log("\n");
 
-      // First, process Alpha agent
-      const alphaSpinner = ora(`Finding Alpha...`).start();
-      const alphaResponse = await sendToAgent(
-        alphaAgent,
-        "show me the latest boosted tokens"
-      );
+      // // First, process Alpha agent
+      // const alphaSpinner = ora(`Finding Alpha...`).start();
+      // const alphaResponse = await sendToAgent(
+      //   alphaAgent,
+      //   "show me the latest boosted tokens",
+      // );
 
       let hash = await executeTrade(result.agents, "", 0);
       console.log("\n");
