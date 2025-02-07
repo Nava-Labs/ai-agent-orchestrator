@@ -15,11 +15,12 @@ export async function swap({
   // slippage,
   userAddress,
   // receiver,
+  chainId,
 }) {
   try {
     if (slippage === 0 || slippage > 99) throw new Error("Invalid Slippage");
 
-    const networkId = 8453;
+    const networkId = chainId;
 
     const paraswap = constructSimpleSDK({
       chainId: networkId,
@@ -50,7 +51,7 @@ export async function swap({
         // receiver,
         slippage: slippageInBps,
       },
-      { ignoreChecks: true, onlyParams: false },
+      { ignoreChecks: true, onlyParams: false }
     );
 
     return {
@@ -59,7 +60,7 @@ export async function swap({
       quotedAmount: priceRoute.destAmount,
       minReceivedAmount: minReceivedAmount(
         slippageInBps,
-        BigInt(priceRoute.destAmount.toString()),
+        BigInt(priceRoute.destAmount.toString())
       ),
       quotedDecimals: priceRoute.destDecimals,
       inputData: txParams.data,

@@ -1,6 +1,6 @@
 {
   "name": "Alpha",
   "tag": "Alpha Agent",
-  "endpoint": "http://localhost:3000/ab5a000e-88b5-09d0-ba25-75f5c6263eb9/message",
+  "endpoint": "https://agentic-hackathon-production.up.railway.app/b850bc30-45f8-0041-a00a-83df46d8555d/message",
   "walletAddress": "0xC12d93c889EEB013B459CC073291D9BCa4b0e8f4"
 }

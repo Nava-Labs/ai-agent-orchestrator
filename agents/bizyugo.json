@@ -1,0 +1,6 @@
+{
+  "name": "Bizyugo",
+  "tag": "Sentiment Agent",
+  "endpoint": "https://agentic-hackathon-production.up.railway.app/d7228559-5a1f-04dc-99f3-a8e4eb540514/message",
+  "walletAddress": "0xC12d93c889EEB013B459CC073291D9BCa4b0e8f4"
+}
