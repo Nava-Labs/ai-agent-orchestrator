@@ -34,7 +34,7 @@ const client = createPublicClient({
 
 const privy = new PrivyClient(
   process.env.PRIVY_APP_ID,
-  process.env.PRIVY_APP_SECRET,
+  process.env.PRIVY_APP_SECRET
 );
 
 // Configure the CLI
@@ -67,7 +67,7 @@ async function loadAgents() {
         const agent = JSON.parse(content);
 
         return agent;
-      }),
+      })
     );
 
     // Filter out any null values from failed loads
@@ -141,11 +141,12 @@ async function getSwapInputData(
   agentsAddresses,
   token,
   chainId,
+  fee
 ) {
   const swapMetadata = await swap({
     srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     destToken: token,
-    amountSwap: "9990000000000",
+    amountSwap: `${fee}`,
     userAddress: executorAddress,
     chainId,
   });
@@ -194,25 +195,41 @@ async function executeTrade(agents, token, chainId) {
   const walletContent = await fs.readFile(walletPath, "utf-8");
   const executorWallet = JSON.parse(walletContent);
 
+  let valueSwap = generateRandomEthers();
+
   const swapData = await getSwapInputData(
-    "0x49F71E5c973E80849805736f7647A05c16CAE215",
+    executorWallet.walletAddress,
     agentWallets,
-    "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a",
-    42161,
+    token,
+    chainId,
+    valueSwap.percentageWei
   );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
     walletId: executorWallet.walletId,
-    caip2: `eip155:42161`,
+    caip2: `eip155:${chainId}`,
     transaction: {
       to: "0x8743E1ad7889d413C17901144d8CA91679977a67", //router
-      value: toHex(parseUnits("0.00001", 18)),
-      chainId: 42161,
+      value: toHex(parseUnits(`${valueSwap.randomEthers}`, 18)),
+      chainId,
       data: swapData,
     },
   });
 
   return data.hash;
+}
+
+function generateRandomEthers() {
+  const randomEthers = Math.random() * (0.00001 - 0.000001) + 0.000001;
+
+  const randomWei = BigInt(Math.floor(randomEthers * 1e18));
+
+  const percentageWei = randomWei / BigInt(1000); // 0.1% = 1/1000
+
+  return {
+    randomEthers,
+    percentageWei: percentageWei.toString(),
+  };
 }
 
 program
@@ -240,8 +257,8 @@ program
         } catch (error) {
           console.log(
             chalk.red(
-              `Error fetching balance for ${agent.name}: ${error.message}`,
-            ),
+              `Error fetching balance for ${agent.name}: ${error.message}`
+            )
           );
         }
 
@@ -249,7 +266,7 @@ program
           ...agent,
           balance,
         };
-      }),
+      })
     );
 
     spinner.stop();
@@ -311,7 +328,7 @@ program
       await fs.writeFile(
         walletPath,
         JSON.stringify(walletData, null, 2),
-        "utf-8",
+        "utf-8"
       );
 
       spinner.succeed("Executor wallet created successfully");
@@ -341,113 +358,109 @@ program
       const alphaAgent = result.agents.find((agent) => agent.name === "Alpha");
       if (!alphaAgent) {
         console.log(
-          chalk.yellow("\nAlpha agent not found in the available agents"),
+          chalk.yellow("\nAlpha agent not found in the available agents")
         );
         return;
       }
 
       // Get remaining agents excluding Alpha
       const remainingAgents = result.agents.filter(
-        (agent) => agent.name !== "Alpha",
+        (agent) => agent.name !== "Alpha"
       );
 
-      const message =
-        options.direct ||
-        (
-          await inquirer.prompt([
-            {
-              type: "input",
-              name: "message",
-              message: "Enter your message:",
-              validate: (input) =>
-                input.length > 0 || "Message cannot be empty",
-            },
-          ])
-        ).message;
+      // const message =
+      //   options.direct ||
+      //   (
+      //     await inquirer.prompt([
+      //       {
+      //         type: "input",
+      //         name: "message",
+      //         message: "Enter your message:",
+      //         validate: (input) =>
+      //           input.length > 0 || "Message cannot be empty",
+      //       },
+      //     ])
+      //   ).message;
 
       console.log("\n");
 
-      // // First, process Alpha agent
-      // const alphaSpinner = ora(`Finding Alpha...`).start();
-      // const alphaResponse = await sendToAgent(
-      //   alphaAgent,
-      //   "show me the latest boosted tokens",
-      // );
+      // First, process Alpha agent
+      const alphaSpinner = ora(`Finding Alpha...`).start();
+      const alphaResponse = await sendToAgent(
+        alphaAgent,
+        "show me the latest boosted tokens"
+      );
 
-      let hash = await executeTrade(result.agents, "", 0);
+      // results.push(alphaResponse);
+      alphaSpinner.succeed(`💎 Alpha found`);
+      console.log("Reason:", alphaResponse.response[0].text);
       console.log("\n");
-      spinner2.succeed(`Executed with tx hash, ${hash}`);
 
-      // // results.push(alphaResponse);
-      // alphaSpinner.succeed(`💎 Alpha found`);
-      // console.log("Reason:", alphaResponse.response[0].text);
-      // console.log("\n");
+      let responseAlpha = alphaResponse.response[0].content.trending_tokens;
 
-      // let responseAlpha = alphaResponse.response[0].content.trending_tokens;
+      const tokensDetail = responseAlpha
+        .map((x) => {
+          return {
+            name: x.name,
+            symbol: x.symbol,
+            address: x.address,
+            decimals: x.decimals,
+            chainId: x.networkId,
+            message: `Should I Buy $${x.symbol}?`,
+          };
+        })
+        .slice(0, 5);
 
-      // const tokensDetail = responseAlpha
-      //   .map((x) => {
-      //     return {
-      //       name: x.name,
-      //       symbol: x.symbol,
-      //       address: x.address,
-      //       decimals: x.decimals,
-      //       chainId: x.networkId,
-      //       message: `Should I Buy $${x.symbol}?`,
-      //     };
-      //   })
-      //   .slice(0, 5);
+      // Then process remaining agents with Alpha's response
+      const checkTokenApproved = [];
+      for (const token of tokensDetail) {
+        let tokenResult = {
+          name: token.name,
+          symbol: token.symbol,
+          address: token.address,
+          chainId: token.chainId,
+        };
 
-      // // Then process remaining agents with Alpha's response
-      // const checkTokenApproved = [];
-      // for (const token of tokensDetail) {
-      //   let tokenResult = {
-      //     name: token.name,
-      //     symbol: token.symbol,
-      //     address: token.address,
-      //     chainId: token.chainId,
-      //   };
+        for (const agent of remainingAgents) {
+          const spinner = ora(
+            `Sending Alpha's response to ${agent.name} as ${agent.tag}...`
+          ).start();
 
-      //   for (const agent of remainingAgents) {
-      //     const spinner = ora(
-      //       `Sending Alpha's response to ${agent.name} as ${agent.tag}...`
-      //     ).start();
+          const response = await sendToAgent(
+            agent,
+            `Should I Buy $${token.symbol}?`
+          );
+          const agentResponse = response.response[1]?.content;
 
-      //     const response = await sendToAgent(
-      //       agent,
-      //       `Should I Buy $${token.symbol}?`
-      //     );
-      //     const agentResponse = response.response[1]?.content;
+          if (agentResponse) {
+            tokenResult[agent.name] = tokenResult[agent.name] =
+              agentResponse.decision === "YES" ||
+              agentResponse.decision === "Yes" ||
+              agentResponse.decision === "yes";
+          }
 
-      //     if (agentResponse) {
-      //       tokenResult[agent.name] = tokenResult[agent.name] =
-      //         agentResponse.decision === "YES" ||
-      //         agentResponse.decision === "Yes" ||
-      //         agentResponse.decision === "yes";
-      //     }
+          spinner.succeed(`Approved by ${agent.name}`);
+          console.log("Reason: ", response.response[0].content.reasoning);
+          console.log("\n");
+        }
 
-      //     spinner.succeed(`Approved by ${agent.name}`);
-      //     console.log("Reason: ", response.response[0].content.reasoning);
-      //     console.log("\n");
-      //   }
+        checkTokenApproved.push(tokenResult);
+      }
 
-      //   checkTokenApproved.push(tokenResult);
-      // }
-
-      // for (let token in checkTokenApproved) {
-      //   if (token.Bizyugo && token.Murad) {
-      //     const spinner2 = ora(
-      //       "Sending message to Shifu Trader Agent... Executing onchain tx"
-      //     ).start();
-      //     await sleep(3000);
-      //     let hash = await executeTrade(
-      //       result.agents,
-      //       token.address,
-      //       token.chainId
-      //     );
-      //     spinner2.succeed(`Executed with tx hash, ${hash}`);
-      //   }
-      // }
+      for (let token in checkTokenApproved) {
+        if (token.Bizyugo && token.Murad) {
+          const spinner2 = ora(
+            "Sending message to Shifu Trader Agent... Executing onchain tx"
+          ).start();
+          await sleep(3000);
+          let hash = await executeTrade(
+            result.agents,
+            token.address,
+            token.chainId
+          );
+          spinner2.succeed(`Executed with tx hash, ${hash}`);
+        }
+      }
     } catch (error) {
       console.error(chalk.red("Error:"), error.message);
       process.exit(1);
