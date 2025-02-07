@@ -18,7 +18,8 @@ import {
   parseUnits,
   toHex,
 } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
+import { swap } from "./utils.js";
 
 dotenv.config();
 
@@ -27,7 +28,7 @@ const program = new Command();
 
 // Create Viem client for Base Sepolia
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http(),
 });
 
@@ -154,26 +155,46 @@ function decidor(response) {
   } catch (error) {}
 }
 
-function getSwapInputData(agentsAddresses, token) {
+async function getSwapInputData(executorAddress, agentsAddresses, token) {
+  const swapMetadata = await swap({
+    srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    destToken: token,
+    amountSwap: "9990000000000",
+    userAddress: executorAddress,
+  });
+
   const data = encodeFunctionData({
     abi: [
       {
         inputs: [
+          { internalType: "address", name: "_swapRouter", type: "address" },
+          { internalType: "address", name: "_token", type: "address" },
           {
             internalType: "address[]",
             name: "_agentAddress",
             type: "address[]",
           },
-          { internalType: "address", name: "_tokenToReceive", type: "address" },
+          { internalType: "bytes", name: "_data", type: "bytes" },
+          {
+            internalType: "uint256",
+            name: "_quotedTokenAmount",
+            type: "uint256",
+          },
         ],
-        name: "swap",
+        name: "aoSwap",
         outputs: [],
         stateMutability: "payable",
         type: "function",
       },
     ],
-    functionName: "swap",
-    args: [agentsAddresses, token],
+    functionName: "aoSwap",
+    args: [
+      swapMetadata.to,
+      token,
+      agentsAddresses,
+      swapMetadata.inputData,
+      swapMetadata.quotedAmount,
+    ],
   });
 
   return data;
@@ -186,15 +207,19 @@ async function executeTrade(agents, token) {
   const walletContent = await fs.readFile(walletPath, "utf-8");
   const executorWallet = JSON.parse(walletContent);
 
-  const swapData = getSwapInputData(agentWallets, token);
+  const swapData = await getSwapInputData(
+    executorWallet.walletAddress,
+    agentWallets,
+    token,
+  );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
     walletId: executorWallet.walletId,
-    caip2: "eip155:84532",
+    caip2: "eip155:8453",
     transaction: {
-      to: "0x7d0e4bd5799752892b4ed8aa18ab115534aec136", //router
-      value: toHex(parseUnits("0.005", 18)),
-      chainId: 84532,
+      to: "0x8743E1ad7889d413C17901144d8CA91679977a67", //router
+      value: toHex(parseUnits("0.00001", 18)),
+      chainId: 8453,
       data: swapData,
     },
   });
@@ -392,7 +417,7 @@ program
         await sleep(3000);
         let hash = await executeTrade(
           result.agents,
-          "0x9F46FC7156D2d5152A6706cDB31E74534d9491d6",
+          "0xB1a03EdA10342529bBF8EB700a06C60441fEf25d",
         );
         spinner2.succeed(`Executed with tx hash, ${hash}`);
       }

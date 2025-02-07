@@ -2,15 +2,19 @@ import { constructSimpleSDK, SwapSide } from "@paraswap/sdk";
 import { ParaSwapVersion } from "@paraswap/core";
 import axios from "axios";
 
+const srcDecimals = 18;
+const destDecimals = 18;
+const slippage = 5;
+
 export async function swap({
   srcToken,
-  srcDecimals,
+  // srcDecimals,
   destToken,
-  destDecimals,
+  // destDecimals,
   amountSwap,
-  slippage,
+  // slippage,
   userAddress,
-  receiver,
+  // receiver,
 }) {
   try {
     if (slippage === 0 || slippage > 99) throw new Error("Invalid Slippage");
@@ -42,10 +46,11 @@ export async function swap({
         srcAmount: amountSwap,
         priceRoute,
         userAddress,
-        receiver,
+        receiver: userAddress,
+        // receiver,
         slippage: slippageInBps,
       },
-      { ignoreChecks: true, onlyParams: true }
+      { ignoreChecks: true, onlyParams: false },
     );
 
     return {
@@ -54,7 +59,7 @@ export async function swap({
       quotedAmount: priceRoute.destAmount,
       minReceivedAmount: minReceivedAmount(
         slippageInBps,
-        BigInt(priceRoute.destAmount.toString())
+        BigInt(priceRoute.destAmount.toString()),
       ),
       quotedDecimals: priceRoute.destDecimals,
       inputData: txParams.data,
