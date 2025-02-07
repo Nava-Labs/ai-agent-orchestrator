@@ -34,7 +34,7 @@ const client = createPublicClient({
 
 const privy = new PrivyClient(
   process.env.PRIVY_APP_ID,
-  process.env.PRIVY_APP_SECRET
+  process.env.PRIVY_APP_SECRET,
 );
 
 // Configure the CLI
@@ -67,7 +67,7 @@ async function loadAgents() {
         const agent = JSON.parse(content);
 
         return agent;
-      })
+      }),
     );
 
     // Filter out any null values from failed loads
@@ -141,7 +141,7 @@ async function getSwapInputData(
   agentsAddresses,
   token,
   chainId,
-  amountToSwap
+  amountToSwap,
 ) {
   const swapMetadata = await swap({
     srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -195,14 +195,14 @@ async function executeTrade(agents, token, chainId) {
   const walletContent = await fs.readFile(walletPath, "utf-8");
   const executorWallet = JSON.parse(walletContent);
 
-  let valueSwap = generateRandomEthers();
+  let valueSwap = findBestETHAmount();
 
   const swapData = await getSwapInputData(
     executorWallet.walletAddress,
     agentWallets,
     token,
     chainId,
-    valueSwap.amountToSwap
+    valueSwap.amountToSwap,
   );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
@@ -219,16 +219,18 @@ async function executeTrade(agents, token, chainId) {
   return data.hash;
 }
 
-function generateRandomEthers() {
-  const randomEthers = Math.random() * (0.00001 - 0.000001) + 0.000001;
+function findBestETHAmount() {
+  const optETH = Math.random() * (0.00001 - 0.000001) + 0.000001;
+  const normalizedOptETH = optETH.toFixed(8);
+  const normalizedOptETHToNumber = Number(normalizedOptETH);
 
-  const randomWei = BigInt(Math.floor(randomEthers * 1e18));
-
-  const percentageWei = randomWei / BigInt(1000); // 0.1% = 1/1000
-  const amountToSwap = randomWei - percentageWei;
+  const amountToSwap = parseUnits(
+    (normalizedOptETHToNumber * 0.999).toString(),
+    18,
+  );
 
   return {
-    randomEthers: randomEthers.toString(),
+    randomEthers: normalizedOptETH,
     amountToSwap: amountToSwap.toString(),
   };
 }
@@ -240,6 +242,7 @@ program
     const spinner = ora("Loading agents...").start();
 
     const result = await loadAgents();
+
     if (!result.success) {
       spinner.stop();
       console.log(chalk.yellow(`\n${result.message}`));
@@ -258,8 +261,8 @@ program
         } catch (error) {
           console.log(
             chalk.red(
-              `Error fetching balance for ${agent.name}: ${error.message}`
-            )
+              `Error fetching balance for ${agent.name}: ${error.message}`,
+            ),
           );
         }
 
@@ -267,7 +270,7 @@ program
           ...agent,
           balance,
         };
-      })
+      }),
     );
 
     spinner.stop();
@@ -329,7 +332,7 @@ program
       await fs.writeFile(
         walletPath,
         JSON.stringify(walletData, null, 2),
-        "utf-8"
+        "utf-8",
       );
 
       spinner.succeed("Executor wallet created successfully");
@@ -359,14 +362,14 @@ program
       const alphaAgent = result.agents.find((agent) => agent.name === "Alpha");
       if (!alphaAgent) {
         console.log(
-          chalk.yellow("\nAlpha agent not found in the available agents")
+          chalk.yellow("\nAlpha agent not found in the available agents"),
         );
         return;
       }
 
       // Get remaining agents excluding Alpha
       const remainingAgents = result.agents.filter(
-        (agent) => agent.name !== "Alpha"
+        (agent) => agent.name !== "Alpha",
       );
 
       // const message =
@@ -389,7 +392,7 @@ program
       const alphaSpinner = ora(`Finding Alpha...`).start();
       const alphaResponse = await sendToAgent(
         alphaAgent,
-        "show me the latest boosted tokens"
+        "show me the latest boosted tokens",
       );
 
       // results.push(alphaResponse);
@@ -424,12 +427,12 @@ program
 
         for (const agent of remainingAgents) {
           const spinner = ora(
-            `Sending Alpha's response to ${agent.name} as ${agent.tag}...`
+            `Sending Alpha's response to ${agent.name} as ${agent.tag}...`,
           ).start();
 
           const response = await sendToAgent(
             agent,
-            `Should I Buy $${token.symbol}?`
+            `Should I Buy $${token.symbol}?`,
           );
           const agentResponse = response.response[1]?.content;
 
@@ -451,13 +454,13 @@ program
       for (let token in checkTokenApproved) {
         if (token.Bizyugo && token.Murad) {
           const spinner2 = ora(
-            "Sending message to Shifu Trader Agent... Executing onchain tx"
+            "Sending message to Shifu Trader Agent... Executing onchain tx",
           ).start();
           await sleep(3000);
           let hash = await executeTrade(
             result.agents,
             token.address,
-            token.chainId
+            token.chainId,
           );
           spinner2.succeed(`Executed with tx hash, ${hash}`);
         }
