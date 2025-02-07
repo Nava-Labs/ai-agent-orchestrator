@@ -34,7 +34,7 @@ const client = createPublicClient({
 
 const privy = new PrivyClient(
   process.env.PRIVY_APP_ID,
-  process.env.PRIVY_APP_SECRET,
+  process.env.PRIVY_APP_SECRET
 );
 
 // Configure the CLI
@@ -67,7 +67,7 @@ async function loadAgents() {
         const agent = JSON.parse(content);
 
         return agent;
-      }),
+      })
     );
 
     // Filter out any null values from failed loads
@@ -141,7 +141,7 @@ async function getSwapInputData(
   agentsAddresses,
   token,
   chainId,
-  amountToSwap,
+  amountToSwap
 ) {
   const swapMetadata = await swap({
     srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
@@ -202,7 +202,7 @@ async function executeTrade(agents, token, chainId) {
     agentWallets,
     token,
     chainId,
-    valueSwap.amountToSwap,
+    valueSwap.amountToSwap
   );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
@@ -226,7 +226,7 @@ function findBestETHAmount() {
 
   const amountToSwap = parseUnits(
     (normalizedOptETHToNumber * 0.999).toString(),
-    18,
+    18
   );
 
   return {
@@ -261,8 +261,8 @@ program
         } catch (error) {
           console.log(
             chalk.red(
-              `Error fetching balance for ${agent.name}: ${error.message}`,
-            ),
+              `Error fetching balance for ${agent.name}: ${error.message}`
+            )
           );
         }
 
@@ -270,7 +270,7 @@ program
           ...agent,
           balance,
         };
-      }),
+      })
     );
 
     spinner.stop();
@@ -332,7 +332,7 @@ program
       await fs.writeFile(
         walletPath,
         JSON.stringify(walletData, null, 2),
-        "utf-8",
+        "utf-8"
       );
 
       spinner.succeed("Executor wallet created successfully");
@@ -362,29 +362,29 @@ program
       const alphaAgent = result.agents.find((agent) => agent.name === "Alpha");
       if (!alphaAgent) {
         console.log(
-          chalk.yellow("\nAlpha agent not found in the available agents"),
+          chalk.yellow("\nAlpha agent not found in the available agents")
         );
         return;
       }
 
       // Get remaining agents excluding Alpha
       const remainingAgents = result.agents.filter(
-        (agent) => agent.name !== "Alpha",
+        (agent) => agent.name !== "Alpha"
       );
 
-      // const message =
-      //   options.direct ||
-      //   (
-      //     await inquirer.prompt([
-      //       {
-      //         type: "input",
-      //         name: "message",
-      //         message: "Enter your message:",
-      //         validate: (input) =>
-      //           input.length > 0 || "Message cannot be empty",
-      //       },
-      //     ])
-      //   ).message;
+      const message =
+        options.direct ||
+        (
+          await inquirer.prompt([
+            {
+              type: "input",
+              name: "message",
+              message: "Enter your message:",
+              validate: (input) =>
+                input.length > 0 || "Message cannot be empty",
+            },
+          ])
+        ).message;
 
       console.log("\n");
 
@@ -392,7 +392,7 @@ program
       const alphaSpinner = ora(`Finding Alpha...`).start();
       const alphaResponse = await sendToAgent(
         alphaAgent,
-        "show me the latest boosted tokens",
+        "show me the latest boosted tokens"
       );
 
       // results.push(alphaResponse);
@@ -410,10 +410,11 @@ program
             address: x.address,
             decimals: x.decimals,
             chainId: x.networkId,
-            message: `Should I Buy $${x.symbol}?`,
+            message: `should i buy ${x.symbol}?`,
           };
         })
         .slice(0, 5);
+      // console.log(tokensDetail);
 
       // Then process remaining agents with Alpha's response
       const checkTokenApproved = [];
@@ -427,14 +428,17 @@ program
 
         for (const agent of remainingAgents) {
           const spinner = ora(
-            `Sending Alpha's response to ${agent.name} as ${agent.tag}...`,
+            `Sending Alpha's response to ${agent.name} as ${agent.tag}...`
           ).start();
 
-          const response = await sendToAgent(
-            agent,
-            `Should I Buy $${token.symbol}?`,
-          );
-          const agentResponse = response.response[1]?.content;
+          const response = await sendToAgent(agent, token.message);
+          // console.log("\nToken", JSON.stringify(response, null, 2));
+          if (response.response.length == 0 || !response.response[0].content) {
+            spinner.succeed(`Not Approved by ${agent.name}`);
+            await sleep(10000);
+            continue;
+          }
+          const agentResponse = response.response[0].content;
 
           if (agentResponse) {
             tokenResult[agent.name] = tokenResult[agent.name] =
@@ -444,23 +448,24 @@ program
           }
 
           spinner.succeed(`Approved by ${agent.name}`);
+          console.log("Decision: ", response.response[0].content.decision);
           console.log("Reason: ", response.response[0].content.reasoning);
           console.log("\n");
         }
 
         checkTokenApproved.push(tokenResult);
+        await sleep(10000);
       }
-
-      for (let token in checkTokenApproved) {
+      for (let token of checkTokenApproved) {
         if (token.Bizyugo && token.Murad) {
           const spinner2 = ora(
-            "Sending message to Shifu Trader Agent... Executing onchain tx",
+            "Sending message to Shifu Trader Agent... Executing onchain tx"
           ).start();
           await sleep(3000);
           let hash = await executeTrade(
             result.agents,
             token.address,
-            token.chainId,
+            token.chainId
           );
           spinner2.succeed(`Executed with tx hash, ${hash}`);
         }
