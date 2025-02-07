@@ -141,7 +141,7 @@ function decidor(response) {
 
   try {
     for (let i = 0; i < response.length; i++) {
-      if (response[i][0].text == "Yes.") {
+      if (response[i].text == "Yes") {
         yes++;
       } else {
         no++;
@@ -184,12 +184,12 @@ async function executeTrade(agents, token) {
 
   const walletPath = path.join(__dirname, "wallet.json");
   const walletContent = await fs.readFile(walletPath, "utf-8");
-  const masterWallet = JSON.parse(walletContent);
+  const executorWallet = JSON.parse(walletContent);
 
   const swapData = getSwapInputData(agentWallets, token);
 
   const data = await privy.walletApi.ethereum.sendTransaction({
-    walletId: masterWallet.walletId,
+    walletId: executorWallet.walletId,
     caip2: "eip155:84532",
     transaction: {
       to: "0x7d0e4bd5799752892b4ed8aa18ab115534aec136", //router
@@ -255,34 +255,34 @@ program
   });
 
 program
-  .command("load-master")
-  .description("load master details")
+  .command("load-executor-details")
+  .description("load executor details")
   .action(async () => {
     const walletPath = path.join(__dirname, "wallet.json");
     const walletContent = await fs.readFile(walletPath, "utf-8");
-    let masterWallet = JSON.parse(walletContent);
+    let executorWallet = JSON.parse(walletContent);
 
     const spinner = ora("Loading ...").start();
 
     const balanceWei = await client.getBalance({
-      address: masterWallet.walletAddress,
+      address: executorWallet.walletAddress,
     });
     const balance = formatEther(balanceWei);
 
     spinner.stop();
 
-    console.log(chalk.yellow(`\nMaster:`));
-    console.log(`Privy Wallet ID: ${masterWallet.walletId}`);
-    console.log(`Privy Wallet Address: ${masterWallet.walletAddress}`);
+    console.log(chalk.yellow(`\nExecutor:`));
+    console.log(`Privy Wallet ID: ${executorWallet.walletId}`);
+    console.log(`Privy Wallet Address: ${executorWallet.walletAddress}`);
     console.log(chalk.blue(`Balance: ${balance} ETH`));
   });
 
 program
-  .command("create-wallet")
-  .description("Create a new master wallet and save to wallet.json")
+  .command("create-executor-wallet")
+  .description("Create a new executor wallet and save to wallet.json")
   .action(async () => {
     try {
-      const spinner = ora("Creating master wallet...").start();
+      const spinner = ora("Creating executor wallet...").start();
 
       // Create Privy wallet
       const { id, address } = await privy.walletApi.create({
@@ -303,9 +303,9 @@ program
         "utf-8",
       );
 
-      spinner.succeed("Master wallet created successfully");
+      spinner.succeed("Executor wallet created successfully");
 
-      console.log(chalk.blue("\nMaster Wallet Details:"));
+      console.log(chalk.blue("\nExecutor Wallet Details:"));
       console.log(`Privy Wallet ID: ${chalk.yellow(id)}`);
       console.log(`Privy Wallet Address: ${chalk.yellow(address)}`);
     } catch (error) {
@@ -316,7 +316,7 @@ program
 
 program
   .command("chat")
-  .description("Start a chat with all AI agents")
+  .description("Start a sequential chat with AI agents, starting with Alpha")
   .option("-d, --direct <message>", "Send message directly without prompt")
   .action(async (options) => {
     try {
@@ -325,6 +325,20 @@ program
         console.log(chalk.yellow(`\n${result.message}`));
         return;
       }
+
+      // Find Alpha agent
+      const alphaAgent = result.agents.find((agent) => agent.name === "Alpha");
+      if (!alphaAgent) {
+        console.log(
+          chalk.yellow("\nAlpha agent not found in the available agents"),
+        );
+        return;
+      }
+
+      // Get remaining agents excluding Alpha
+      const remainingAgents = result.agents.filter(
+        (agent) => agent.name !== "Alpha",
+      );
 
       const message =
         options.direct ||
@@ -340,44 +354,47 @@ program
           ])
         ).message;
 
+      console.log("\n");
+
       const results = [];
 
-      // Process agents sequentially
-      for (const agent of result.agents) {
-        const spinner = ora(
-          `Sending message to ${agent.name} as ${agent.tag}...`,
-        ).start();
-        const response = await sendToAgent(agent, message);
-        results.push(response);
-        spinner.succeed(`${agent.name} responded`);
+      // First, process Alpha agent
+      const alphaSpinner = ora(`Finding Alpha...`).start();
+      const alphaResponse = await sendToAgent(alphaAgent, message);
 
-        // // Display the response immediately
-        // console.log(`\n${chalk.yellow(response.agent)} (${response.tag})`);
-        // if (response.success) {
-        //   console.log(chalk.green("Response:"), response.response);
-        // } else {
-        //   console.log(chalk.red("Error:"), response.error);
-        // }
+      // results.push(alphaResponse);
+      alphaSpinner.succeed(`💎 Alpha found`);
+      console.log("Reason:", alphaResponse.response[0].text);
+      console.log("\n");
+
+      // Then process remaining agents with Alpha's response
+      for (const agent of remainingAgents) {
+        const spinner = ora(
+          `Sending Alpha's response to ${agent.name} as ${agent.tag}...`,
+        ).start();
+        const response = await sendToAgent(
+          agent,
+          alphaResponse.response[0].text,
+        );
+        results.push(response);
+        spinner.succeed(`Approved by ${agent.name}`);
+        console.log("Reason: ", response.response[0].text);
+        console.log("\n");
       }
 
-      let count = decidor(results.map((x) => x.response));
-      // console.log("Count", count);
+      let count = decidor(results.map((x) => x.response[0]));
+      // console.log(count);
 
-      if (count.yes == 2) {
-        // console.log(`\n${chalk.yellow("Shifu")} (Trader Agent)`);
-        // const spinner2 = ora("\nExecuting on-chain txs... ").start();
+      if (count.yes >= 2) {
         const spinner2 = ora(
           "Sending message to Shifu Trader Agent... Executing onchain tx",
         ).start();
-
         await sleep(3000);
-
         let hash = await executeTrade(
           result.agents,
           "0x9F46FC7156D2d5152A6706cDB31E74534d9491d6",
         );
-
-        spinner2.succeed(`Shifu responded, ${hash}`);
+        spinner2.succeed(`Executed with tx hash, ${hash}`);
       }
     } catch (error) {
       console.error(chalk.red("Error:"), error.message);
