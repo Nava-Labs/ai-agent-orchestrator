@@ -5,6 +5,8 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
+    "@paraswap/core": "^2.4.0",
+    "@paraswap/sdk": "^6.10.0",
     "@privy-io/server-auth": "^1.18.4",
     "axios": "^1.7.9",
     "chalk": "^5.4.1",
