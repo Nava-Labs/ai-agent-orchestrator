@@ -141,12 +141,12 @@ async function getSwapInputData(
   agentsAddresses,
   token,
   chainId,
-  fee
+  amountToSwap
 ) {
   const swapMetadata = await swap({
     srcToken: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     destToken: token,
-    amountSwap: `${fee}`,
+    amountSwap: amountToSwap,
     userAddress: executorAddress,
     chainId,
   });
@@ -202,7 +202,7 @@ async function executeTrade(agents, token, chainId) {
     agentWallets,
     token,
     chainId,
-    valueSwap.percentageWei
+    valueSwap.amountToSwap
   );
 
   const data = await privy.walletApi.ethereum.sendTransaction({
@@ -210,7 +210,7 @@ async function executeTrade(agents, token, chainId) {
     caip2: `eip155:${chainId}`,
     transaction: {
       to: "0x8743E1ad7889d413C17901144d8CA91679977a67", //router
-      value: toHex(parseUnits(`${valueSwap.randomEthers}`, 18)),
+      value: toHex(parseUnits(valueSwap.randomEthers, 18)),
       chainId,
       data: swapData,
     },
@@ -225,10 +225,11 @@ function generateRandomEthers() {
   const randomWei = BigInt(Math.floor(randomEthers * 1e18));
 
   const percentageWei = randomWei / BigInt(1000); // 0.1% = 1/1000
+  const amountToSwap = randomWei - percentageWei;
 
   return {
-    randomEthers,
-    percentageWei: percentageWei.toString(),
+    randomEthers: randomEthers.toString(),
+    amountToSwap: amountToSwap.toString(),
   };
 }
 
