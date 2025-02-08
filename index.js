@@ -440,6 +440,7 @@ program
               "💭 Analysis: ",
               chalk.yellowBright(response.response[0].content.reasoning),
             );
+            await sleep(3000);
           }
 
           // if both true, then executor agent will be triggered
