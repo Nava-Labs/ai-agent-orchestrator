@@ -445,7 +445,7 @@ program
           // if both true, then executor agent will be triggered
           if (tokenResult.Bizyugo && tokenResult.Murad) {
             const spinner2 = ora(
-              "🚀 Initiating Shifu Trader Agent... Preparing transaction",
+              "🚀 Initiating Executor Trader Agent... Preparing transaction with Optimized ETH 🍀",
             ).start();
             let hash = await executeTrade(
               result.agents,
