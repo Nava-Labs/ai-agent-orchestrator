@@ -1,6 +1,6 @@
 {
-  "name": "ai-agent-orchestration",
-  "version": "1.0.2",
+  "name": "aoxbt",
+  "version": "1.0.0",
   "main": "index.js",
   "type": "module",
   "license": "MIT",
