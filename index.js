@@ -347,9 +347,8 @@ program
   });
 
 program
-  .command("chat")
-  .description("Start a sequential chat with AI agents, starting with Alpha")
-  .option("-d, --direct <message>", "Send message directly without prompt")
+  .command("start")
+  .description("Start finding alpha and orchestrate AI agents")
   .action(async (options) => {
     try {
       const result = await loadAgents();
