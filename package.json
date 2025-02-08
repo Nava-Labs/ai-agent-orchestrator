@@ -17,6 +17,6 @@
     "viem": "^2.22.21"
   },
   "bin": {
-    "mybot": "./index.js"
+    "aoxbt": "./index.js"
   }
 }

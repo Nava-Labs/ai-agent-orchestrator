@@ -39,8 +39,8 @@ const privy = new PrivyClient(
 
 // Configure the CLI
 program
-  .name("ai-chat")
-  .description("CLI to interact with multiple AI agents")
+  .name("aoxbt")
+  .description("Next level Alpha finder 🤖")
   .version("1.0.0");
 
 async function loadAgents() {
@@ -287,8 +287,8 @@ program
   });
 
 program
-  .command("load-executor-details")
-  .description("load executor details")
+  .command("load-executor-agent")
+  .description("Check Executor Agent details")
   .action(async () => {
     const walletPath = path.join(__dirname, "wallet.json");
     const walletContent = await fs.readFile(walletPath, "utf-8");
@@ -311,7 +311,7 @@ program
 
 program
   .command("create-executor-wallet")
-  .description("Create a new executor wallet and save to wallet.json")
+  .description("Create a new wallet for executor agent")
   .action(async () => {
     try {
       const spinner = ora("Creating executor wallet...").start();
@@ -335,7 +335,7 @@ program
         "utf-8",
       );
 
-      spinner.succeed("Executor wallet created successfully");
+      spinner.succeed("Executor agent wallet created successfully");
 
       console.log(chalk.blue("\nExecutor Wallet Details:"));
       console.log(`Privy Wallet ID: ${chalk.yellow(id)}`);
